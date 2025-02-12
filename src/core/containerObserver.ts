@@ -39,7 +39,6 @@ export function createContainerObserver(
   const shouldIgnoreToast = ({ containerId, toastId, updateId }: NotValidatedToastProps) => {
     const containerMismatch = containerId ? containerId !== id : id !== 1;
     const isDuplicate = toasts.has(toastId) && updateId == null;
-
     return containerMismatch || isDuplicate;
   };
 
@@ -87,7 +86,6 @@ export function createContainerObserver(
     if (shouldIgnoreToast(options)) return;
 
     const { toastId, updateId, data, staleId, delay } = options;
-
     const isNotAnUpdate = updateId == null;
 
     if (isNotAnUpdate) toastCount++;
@@ -105,13 +103,17 @@ export function createContainerObserver(
       progressClassName: parseClassName(options.progressClassName || props.progressClassName),
       autoClose: options.isLoading ? false : getAutoCloseDelay(options.autoClose, props.autoClose),
       closeToast(reason?: true) {
-        toasts.get(toastId)!.removalReason = reason;
-        removeToast(toastId);
+        const toast = toasts.get(toastId);
+        if (toast) {
+          toast.removalReason = reason;
+          removeToast(toastId);
+        } else {
+          console.warn(`Toast with id ${toastId} not found.`);
+        }
       },
       deleteToast() {
         const toastToRemove = toasts.get(toastId);
-
-        if (toastToRemove == null) return;
+        if (!toastToRemove) return;
 
         dispatchChanges(toToastItem(toastToRemove, 'removed'));
         toasts.delete(toastId);
@@ -120,7 +122,7 @@ export function createContainerObserver(
         if (toastCount < 0) toastCount = 0;
 
         if (queue.length > 0) {
-          addActiveToast(queue.shift());
+          addActiveToast(queue.shift()!);
           return;
         }
 
@@ -142,7 +144,6 @@ export function createContainerObserver(
       staleId
     } as Toast;
 
-    // not handling limit + delay by design. Waiting for user feedback first
     if (props.limit && props.limit > 0 && toastCount > props.limit && isNotAnUpdate) {
       queue.push(activeToast);
     } else if (isNum(delay)) {
